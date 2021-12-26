@@ -1,0 +1,12 @@
+venv
+.idea
+.vscode
+.devcontainer
+__pycache__
+.DS_Store
+tags
+*.sw
+*.swo
+*.swp
+*.vim
+*.code-workspace
