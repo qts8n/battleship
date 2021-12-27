@@ -293,18 +293,6 @@ def decide_recommended_shot(field, recomendation_pool, field_size=10):
     return potential_targets[random.randint(0, target_num - 1)]
 
 
-def _ai_iteration(field, ships, recomendation_pool, field_size=10):
-    if not recomendation_pool:
-        cell_idx = decide_random_shot(field, field_size=field_size)
-    else:
-        cell_idx = decide_recommended_shot(field, recomendation_pool, field_size=field_size)
-    ai_shot = register_hit(field, ships, cell_idx)
-    recomendation_pool = make_recommendations(field, recomendation_pool, cell_idx, ai_shot, field_size=field_size)
-    ai_shot_hr = cell_idx_to_human_readable(cell_idx, field_size=field_size)
-    print(ai_shot_hr, '-', ai_shot.name)
-    return recomendation_pool
-
-
 def _main_loop():
     _print_greeting()
     turn_count = 0
@@ -334,7 +322,14 @@ def _main_loop():
         print('\t\tTurn: #', turn_count, ' (AI)', sep='')
         print('AI\'s turn log:')
         while not game_over and ai_shot is not Shot.MISS:
-            recomendation_pool = _ai_iteration(field_player, ships_player, recomendation_pool, field_size=_FIELD_SIZE)
+            if not recomendation_pool:
+                cell_idx = decide_random_shot(field_player, field_size=_FIELD_SIZE)
+            else:
+                cell_idx = decide_recommended_shot(field_player, recomendation_pool, field_size=_FIELD_SIZE)
+            ai_shot = register_hit(field_player, ships_player, cell_idx)
+            recomendation_pool = make_recommendations(field_player, recomendation_pool, cell_idx, ai_shot, field_size=_FIELD_SIZE)
+            ai_shot_hr = cell_idx_to_human_readable(cell_idx, field_size=_FIELD_SIZE)
+            print(ai_shot_hr, '-', ai_shot.name)
             game_over = check_for_game_over(field_player)
             if game_over:
                 print('\n\t\tYOU LOST!')
