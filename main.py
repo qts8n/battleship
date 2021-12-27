@@ -24,9 +24,9 @@ class FieldCell(enum.Enum):
 
 
 class Shot(enum.Enum):
-    MISS = enum.auto()
-    HIT = enum.auto()
-    SUNK = enum.auto()
+    MISS = 'miss'
+    HIT = 'hit'
+    SUNK = 'sunk'
 
 
 def _is_valid_x_ship_start(field, cell_idx, deck_length, field_size):
@@ -88,7 +88,7 @@ def generate_field(field_size=10, max_deck_length=4):
             if not possible_num:
                 raise FieldGenerationException(
                     'Could not generate field with given field size of '
-                    f'{field_size} and max deck length of {max_deck_length}')
+                    'and max deck length')
             ship = possible_cells[random.randint(0, possible_num - 1)]
             ships.append(ship)
             for cell_idx in ship:
@@ -122,14 +122,21 @@ def _print_battleship_screen(field_player, field_ai, field_size=10):
         for i in range(field_size):
             row_name = str(i + 1).ljust(2)
             row_idx = i * field_size
-            print(f'{row_name}) ', end='')
+            print(row_name, ') ', sep='', end='')
             _print_field_row(field_player, row_idx, field_size, show_ships=True)
-            print(f'{row_name}) ', end='')
+            print(row_name, ') ', sep='', end='')
             _print_field_row(field_ai, row_idx, field_size, show_ships=_DEBUG)
             print(end='\n')
     except IndexError as exc:
-        raise BattleshipException(f'Invalid field size of {field_size}') from exc
+        raise BattleshipException('Invalid field size') from exc
     print('    ^ Your field ^')
+
+
+def _print_greeting():
+    print('\t\tWELCOME TO BATTLESHIP!', 'Legend:', sep='\n\n')
+    for mark in FieldCell:
+        print(mark.value, '-', mark.name)
+    print('Press C-c to forfeit and exit')
 
 
 def _accept_valid_bullet_placement(field, field_size=10):
@@ -202,7 +209,8 @@ def _is_sunken_ship_in_proximity(field, cell_x, cell_y, field_size):
 
 def cell_idx_to_human_readable(cell_idx, field_size):
     cell_y, cell_x = cell_idx // field_size, cell_idx % field_size
-    return f'{_COLUMNS[cell_x]}{cell_y + 1}'
+    col_name, row_name =  _COLUMNS[cell_x], str(cell_y + 1)
+    return col_name + row_name
 
 
 def decide_random_shot(field, field_size=10):
@@ -284,20 +292,29 @@ def decide_recommended_shot(field, recomendation_pool, field_size=10):
     return potential_targets[random.randint(0, target_num - 1)]
 
 
-def _main_loop():
-    field_player, ships_player = generate_field(field_size=_FIELD_SIZE)
-    field_ai, ships_ai = generate_field(field_size=_FIELD_SIZE)
-    print('\t\tWELCOME TO BATTLESHIP!', 'Legend:', sep='\n\n')
-    for mark in FieldCell:
-        print(mark.value, '-', mark.name)
+def _ai_iteration(field, ships, recomendation_pool, field_size=10):
+    if not recomendation_pool:
+        cell_idx = decide_random_shot(field, field_size=field_size)
+    else:
+        cell_idx = decide_recommended_shot(field, recomendation_pool, field_size=field_size)
+    ai_shot = register_hit(field, ships, cell_idx)
+    recomendation_pool = make_recommendations(field, recomendation_pool, cell_idx, ai_shot, field_size=field_size)
+    ai_shot_hr = cell_idx_to_human_readable(cell_idx, field_size=field_size)
+    print(ai_shot_hr, '-', ai_shot.name)
+    return recomendation_pool
 
-    game_over = False
+
+def _main_loop():
+    _print_greeting()
     turn_count = 0
+    game_over = False
     recomendation_pool = []
+    field_ai, ships_ai = generate_field(field_size=_FIELD_SIZE)
+    field_player, ships_player = generate_field(field_size=_FIELD_SIZE)
     while not game_over:
         _print_battleship_screen(field_player, field_ai, field_size=_FIELD_SIZE)
         turn_count += 1
-        print(f'\t\tTurn: #{turn_count} (player)')
+        print('\t\tTurn: #', turn_count, ' (player)', sep='')
 
         cell_idx = _accept_valid_bullet_placement(field_ai, field_size=_FIELD_SIZE)
         player_shot = register_hit(field_ai, ships_ai, cell_idx)
@@ -312,23 +329,18 @@ def _main_loop():
             continue
         turn_count += 1
         ai_shot = None
-        print(
-            'YOU MISSED! AI\'s turn...',
-            f'\t\tTurn: #{turn_count} (AI)',
-            'AI\'s turn log:', sep='\n')
+        print('YOU MISSED! AI\'s turn...')
+        print('\t\tTurn: #', turn_count, ' (AI)', sep='')
+        print('AI\'s turn log:')
         while not game_over and ai_shot is not Shot.MISS:
-            if not recomendation_pool:
-                cell_idx = decide_random_shot(field_player, field_size=_FIELD_SIZE)
-            else:
-                cell_idx = decide_recommended_shot(field_player, recomendation_pool, field_size=_FIELD_SIZE)
-            ai_shot = register_hit(field_player, ships_player, cell_idx)
-            recomendation_pool = make_recommendations(field_player, recomendation_pool, cell_idx, ai_shot, field_size=_FIELD_SIZE)
-            ai_shot_hr = cell_idx_to_human_readable(cell_idx, field_size=_FIELD_SIZE)
-            print(ai_shot_hr, '-', ai_shot.name)
+            recomendation_pool = _ai_iteration(field_player, ships_player, recomendation_pool, field_size=_FIELD_SIZE)
             game_over = check_for_game_over(field_player)
             if game_over:
                 print('\n\t\tYOU LOST!')
 
 
 if __name__ == '__main__':
-    _main_loop()
+    try:
+        _main_loop()
+    except KeyboardInterrupt:
+        print('\n\t\tTHANKS FOR PLAYING!')
