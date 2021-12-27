@@ -117,14 +117,15 @@ def _print_battleship_screen(field_player, field_ai, field_size=10):
 
     try:
         _print_battleship_header(field_index)
+        print('  ', end='')
         _print_battleship_header(field_index)
         print(end='\n')
         for i in range(field_size):
-            row_name = str(i + 1).ljust(2)
+            row_name = str(i + 1).rjust(2)
             row_idx = i * field_size
             print(row_name, ') ', sep='', end='')
             _print_field_row(field_player, row_idx, field_size, show_ships=True)
-            print(row_name, ') ', sep='', end='')
+            print('  ', row_name, ') ', sep='', end='')
             _print_field_row(field_ai, row_idx, field_size, show_ships=_DEBUG)
             print(end='\n')
     except IndexError as exc:
